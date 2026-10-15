@@ -1,68 +1,62 @@
-﻿# Learnpath
+# Learnova AI
 
-Learnpath has a separate vanilla-JavaScript frontend and Node.js backend. The backend keeps the Gemini and optional Supabase credentials private, serves the frontend, and generates learning paths with Gemini. Workspace data is saved in this browser by default and can optionally sync to Supabase without requiring a login.
+Learnova AI creates personalized, AI-powered study roadmaps and tracks tasks, progress, study time, and learning resources.
 
-## Project structure
+## Architecture
 
 ```text
-AI learning/
-- frontend/
-- backend/
-  - index.js
-  - .env                 # private API keys; excluded from Git
-  - .env.example
-- supabase/
-  - config.toml
-  - migrations/
-- package.json
-- README.md
+learnova-ai/
+├── frontend/                 # React + TypeScript + Vite + Tailwind
+│   ├── src/components/        # Reusable UI, including shadcn-style primitives
+│   ├── src/pages/             # Dashboard and learning-path form
+│   ├── src/layouts/           # Application shell and navigation
+│   ├── src/services/          # Flask API and optional Supabase clients
+│   ├── src/stores/            # Workspace state and browser cache
+│   ├── src/hooks/             # Reusable React hooks
+│   ├── src/types/             # TypeScript interfaces
+│   └── src/lib/                # Shared utilities
+├── backend/                   # Python Flask REST API
+│   ├── app/routes/             # API endpoints
+│   ├── app/services/           # Workspace persistence
+│   ├── app/ai/                 # Gemini integration
+│   ├── app/research/           # Research service extension point
+│   ├── app/schemas/            # Request and response validation
+│   ├── app/utils/              # Shared helpers
+│   ├── migrations/             # Backend migration notes
+│   └── tests/                  # pytest coverage location
+├── supabase/migrations/       # SQL schema and row-level security
+├── legacy/                    # Previous vanilla JS + Node implementation, retained for reference
+├── .env.example
+└── README.md
 ```
 
-## Setup on Windows
+## Run locally on Windows
 
-1. Install Node.js 20 or newer and open this project folder in VS Code.
-2. Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). Copy `backend/.env.example` to `backend/.env` if the latter does not exist, then fill in:
+1. Install Node.js 20+ and Python 3.10+.
+2. Install frontend packages with `npm install`.
+3. Create a Python environment and install the API requirements:
 
-   ```env
-   GEMINI_API_KEY=your_google_ai_studio_key
-   GEMINI_MODEL=gemini-2.5-flash
-   PORT=3000
+   ```powershell
+   py -m venv backend/.venv
+   .\backend\.venv\Scripts\Activate.ps1
+   pip install -r backend/requirements.txt
    ```
 
-3. In the project folder terminal, run:
+4. Copy `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY` from Google AI Studio. This key stays on the Flask server.
+5. Open two terminals from the project folder:
 
    ```powershell
    npm run dev
    ```
 
-4. Open **http://127.0.0.1:3000** and keep the terminal open. Learning paths can now be generated and saved locally in this browser.
-
-## Optional Supabase sync
-
-1. Link this repository to your Supabase project. Leave **Working directory** blank because `supabase/` is at the repository root. The migration in `supabase/migrations/` creates the workspace table.
-2. In project settings, copy the **Project URL** and the legacy `service_role` API key. The service-role key bypasses row-level security; keep it only in `backend/.env`, never in frontend files or chat.
-3. Add these values to `backend/.env` and restart the server:
-
-   ```env
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   ```powershell
+   .\backend\.venv\Scripts\python.exe backend/run.py
    ```
 
-## Data and privacy
+6. Open **http://127.0.0.1:5173**. Vite forwards `/api` requests to Flask on port 5000.
 
-- Gemini is called only by the backend; its key is never sent to the browser.
-- When Supabase is configured, the backend assigns a private, HTTP-only browser cookie and uses it to load and save that browser's workspace. No login is required. Without login, workspace data is not shared between browsers or devices.
-- Supabase Row Level Security is enabled and access is revoked for the public `anon` and `authenticated` roles. Only the backend's service-role key accesses workspace rows.
-- Existing learning data in this browser's local storage is copied to Supabase the first time the app connects successfully.
-- Without Supabase, learning paths are saved only in this browser's local storage.
-- **Clear saved learning data** removes the workspace from Supabase (if configured) and this browser's local cache.
+The backend stores workspaces as private JSON files in `backend/data/`. Supabase client configuration is optional; database schema and row-level security are in `supabase/migrations/` for deployments that use Supabase. Never put a service-role key in a `VITE_` variable. The previous vanilla JavaScript and Node files are retained under `legacy/`.
 
-## Troubleshooting
+`GET /api/health` reports whether Gemini is configured. If generation fails, check the Flask terminal and `GEMINI_API_KEY` in `backend/.env`. Exporting or printing a roadmap can be done through the browser print dialog.
 
-- Gemini is required for generating paths. Fill in `GEMINI_API_KEY` in `backend/.env` and restart `npm run dev`.
-- Supabase is optional. Without it, the app stores workspace data in this browser only.
-- `/api/health` reports whether each service is configured without revealing keys.
-- If workspace saving fails, check the backend terminal for the Supabase error and confirm the migration was applied, the project URL, and the service-role key.
-- **Export PDF** opens the browser print dialog; choose **Save as PDF**.
-
-Generated study advice can be inaccurate. Check important or exam-specific information against authoritative sources.
+AI generated study advice can be inaccurate. Check important or exam-specific information against authoritative sources.

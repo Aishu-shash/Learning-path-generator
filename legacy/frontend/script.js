@@ -8,7 +8,7 @@ let workspace = null;
 let chatHistory = [];
 let chatBusy = false;
 let backendReady = false;
-let supabaseReady = false;
+let workspaceSyncReady = false;
 let backendError = "Start the Node.js API server with `npm run dev`.";
 let workspaceSaveQueue = Promise.resolve();
 
@@ -50,8 +50,8 @@ async function persistWorkspace(notify = false) {
     showToast("Could not cache your workspace in this browser. Check available storage and try again.", "error");
     return false;
   }
-  if (!supabaseReady) {
-    if (notify) showToast("Saved in this browser only. Configure Supabase to sync your workspace.");
+  if (!workspaceSyncReady) {
+    if (notify) showToast("Saved in this browser only. The local sync server is unavailable.");
     return true;
   }
   const saveRequest = workspaceSaveQueue.catch(() => {}).then(async () => {
@@ -61,18 +61,18 @@ async function persistWorkspace(notify = false) {
       body: snapshot,
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || `Supabase save failed (${response.status}).`);
+    if (!response.ok) throw new Error(result.error || `Workspace save failed (${response.status}).`);
   });
   workspaceSaveQueue = saveRequest;
   try {
     await saveRequest;
-    if (notify) showToast("Your roadmap and progress are saved to Supabase.");
+    if (notify) showToast("Your roadmap and progress are saved on this server.");
     return true;
   } catch (error) {
-    console.error("Could not save Learnpath workspace to Supabase.", error);
-    supabaseReady = false;
-    showServiceNotice("Supabase sync is unavailable. Your learning path and progress are saved in this browser.", "info");
-    showToast(`Supabase sync failed; saved in this browser instead. ${error.message || "Check your Supabase setup."}`, "error");
+    console.error("Could not save Learnpath workspace to the local server.", error);
+    workspaceSyncReady = false;
+    showServiceNotice("Server sync is unavailable. Your learning path and progress are saved in this browser.", "info");
+    showToast(`Server sync failed; saved in this browser instead. ${error.message || "Check that the server is running."}`, "error");
     return true;
   }
 }
@@ -108,18 +108,17 @@ async function checkApiServer() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || `Health check failed (${response.status}).`);
     backendReady = Boolean(result.geminiConfigured);
-    supabaseReady = Boolean(result.supabaseConfigured);
+    workspaceSyncReady = Boolean(result.workspaceSyncReady);
     backendError = backendReady ? "" : "Set GEMINI_API_KEY in backend/.env and restart the server.";
     if (!backendReady) {
-      showServiceNotice(`Gemini setup needed: ${backendError} Supabase is optional; without it, workspace data stays in this browser.`, "error");
-    } else if (!supabaseReady) {
-      showServiceNotice("Gemini AI is ready. Workspace data is saved in this browser; configure optional Supabase to sync it.", "info");
-    }
-    else showServiceNotice("Gemini AI and Supabase are ready. Your learning workspace is saved to Supabase.", "success");
+      showServiceNotice(`Gemini setup needed: ${backendError} Your workspace still saves on this server.`, "error");
+    } else if (!workspaceSyncReady) {
+      showServiceNotice("Gemini AI is ready. Server sync is unavailable; workspace data is saved in this browser.", "info");
+    } else showServiceNotice("Gemini AI and local workspace sync are ready. Your data is saved on this server.", "success");
     return result;
   } catch (error) {
     backendReady = false;
-    supabaseReady = false;
+    workspaceSyncReady = false;
     backendError = error instanceof TypeError
       ? "Could not reach the Node.js API. In the project folder, run `npm run dev` and open http://127.0.0.1:3000."
       : error.message || "The AI server is not ready.";
@@ -128,33 +127,33 @@ async function checkApiServer() {
   }
 }
 
-async function loadSupabaseWorkspace() {
+async function loadServerWorkspace() {
   try {
     const response = await fetch(`${API_BASE_URL}/api/workspace`);
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || `Supabase load failed (${response.status}).`);
+    if (!response.ok) throw new Error(result.error || `Workspace load failed (${response.status}).`);
     if (result.workspace) {
       workspace = result.workspace;
       render();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
       } catch (error) {
-        console.error("Could not cache the Supabase workspace in this browser.", error);
-        showToast("Your Supabase workspace loaded, but could not be cached in this browser.", "error");
+        console.error("Could not cache the server workspace in this browser.", error);
+        showToast("Your server workspace loaded, but could not be cached in this browser.", "error");
       }
       return;
     }
     if (workspace) {
-      if (await persistWorkspace()) showToast("Your existing browser workspace was copied to Supabase.");
+      if (await persistWorkspace()) showToast("Your existing browser workspace was copied to this server.");
       return;
     }
     workspace = null;
     render();
   } catch (error) {
-    console.error("Could not load Learnpath workspace from Supabase.", error);
-    supabaseReady = false;
-    showServiceNotice("Supabase sync is unavailable. Your learning path and progress are saved in this browser.", "info");
-    showToast(`Could not load from Supabase; using this browser's saved workspace. ${error.message || "Check your Supabase setup."}`, "error");
+    console.error("Could not load Learnpath workspace from the local server.", error);
+    workspaceSyncReady = false;
+    showServiceNotice("Server sync is unavailable. Your learning path and progress are saved in this browser.", "info");
+    showToast(`Could not load from the server; using this browser's saved workspace. ${error.message || "Check that the server is running."}`, "error");
   }
 }
 
@@ -446,9 +445,9 @@ async function generatePath(event) {
     if (!await persistWorkspace()) throw new Error("The path was generated but could not be saved.");
     render();
     closeModal(modal);
-    showToast(supabaseReady
-      ? "Your personalized learning path is ready and saved to Supabase."
-      : "Your personalized learning path is ready and saved in this browser. Configure Supabase to sync it.");
+    showToast(workspaceSyncReady
+      ? "Your personalized learning path is ready and saved on this server."
+      : "Your personalized learning path is ready and saved in this browser.");
     $("#roadmap").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     const message = error.message || "Gemini could not generate your learning path. Check the Edge Function and try again.";
@@ -557,9 +556,6 @@ function setInitialDates() {
   $("#task-date-input").value = todayString;
 }
 
-$("#new-path-button").addEventListener("click", () => openModal());
-$("#new-path-top").addEventListener("click", () => openModal());
-$("#empty-create-button").addEventListener("click", () => openModal());
 $("#generator-modal .close-modal").addEventListener("click", () => closeModal(modal));
 $("#task-modal .close-modal").addEventListener("click", () => closeModal($("#task-modal")));
 [modal, $("#task-modal")].forEach((backdrop) => backdrop.addEventListener("click", (event) => {
@@ -589,10 +585,10 @@ $("#download-button").addEventListener("click", () => window.print());
 $("#clear-saved-button").addEventListener("click", async () => {
   if (!window.confirm("Clear the saved roadmap, tasks, and progress from this browser?")) return;
   try {
-    if (supabaseReady) {
+    if (workspaceSyncReady) {
       const response = await fetch(`${API_BASE_URL}/api/workspace`, { method: "DELETE" });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Supabase delete failed (${response.status}).`);
+      if (!response.ok) throw new Error(result.error || `Workspace delete failed (${response.status}).`);
     }
     localStorage.removeItem(STORAGE_KEY);
     workspace = null;
@@ -633,11 +629,23 @@ async function initializeApp() {
   setInitialDates();
   workspace = loadWorkspace();
   render();
-  const health = await checkApiServer();
-  if (health && health.supabaseConfigured) await loadSupabaseWorkspace();
-  else if (health && health.geminiConfigured) {
-    showServiceNotice("Gemini AI is ready. Workspace data is saved in this browser; configure Supabase to sync it.", "info");
+  const pageTargets = {
+    "/": "overview",
+    "/roadmap": "roadmap",
+    "/tasks": "tasks",
+    "/study-plan": "study-plan",
+    "/resources": "resources-section",
+  };
+  const activeTarget = pageTargets[window.location.pathname];
+  document.querySelectorAll(".side-nav a").forEach((link) => {
+    link.classList.toggle("active", new URL(link.href).pathname === (window.location.pathname === "/index.html" ? "/" : window.location.pathname));
+  });
+  if (activeTarget && activeTarget !== "overview") {
+    window.requestAnimationFrame(() => $(`#${activeTarget}`).scrollIntoView({ block: "start" }));
   }
+  if (window.location.pathname === "/new") openModal();
+  const health = await checkApiServer();
+  if (health && health.workspaceSyncReady) await loadServerWorkspace();
 }
 
 initializeApp();

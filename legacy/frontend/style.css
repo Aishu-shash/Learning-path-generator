@@ -70,7 +70,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .crumb-slash { color: #d1d2da; }
 .topbar-right { align-items: center; display: flex; gap: 17px; }
 .today-label { color: #888b9a; font-size: 11px; }
-.icon-button { align-items: center; background: #fff; border: 1px solid #e9e9f0; border-radius: 8px; color: #73768a; cursor: pointer; display: inline-flex; font-size: 17px; height: 34px; justify-content: center; width: 36px; }
+.icon-button { align-items: center; background: #fff; border: 1px solid #e9e9f0; border-radius: 8px; color: #73768a; cursor: pointer; display: inline-flex; font-size: 17px; height: 34px; justify-content: center; text-decoration: none; width: 36px; }
 .icon-button:hover { border-color: #d8d3fc; color: var(--purple); }
 .mobile-menu { display: none; }
 .welcome-row { align-items: center; display: flex; justify-content: space-between; padding: 38px 0 25px; }
@@ -81,7 +81,7 @@ h1, h2, h3 { font-family: "Manrope", sans-serif; }
 h1 { font-size: clamp(24px, 2.6vw, 34px); letter-spacing: -1.4px; margin: 11px 0 6px; }
 h1 span { color: var(--purple); }
 .welcome-subtitle { color: var(--muted); font-size: 12px; margin: 0; }
-.button { align-items: center; border: 0; border-radius: 8px; cursor: pointer; display: inline-flex; font-size: 12px; font-weight: 700; gap: 9px; justify-content: center; transition: background .18s, transform .18s, box-shadow .18s; }
+.button { align-items: center; border: 0; border-radius: 8px; cursor: pointer; display: inline-flex; font-size: 12px; font-weight: 700; gap: 9px; justify-content: center; text-decoration: none; transition: background .18s, transform .18s, box-shadow .18s; }
 .button:hover { transform: translateY(-1px); }
 .button:disabled { cursor: wait; opacity: .7; transform: none; }
 .button-primary { background: var(--purple); box-shadow: 0 5px 13px rgba(112, 98, 220, .2); color: white; min-height: 41px; padding: 0 17px; }

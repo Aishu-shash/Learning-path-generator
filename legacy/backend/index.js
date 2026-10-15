@@ -5,6 +5,7 @@ const crypto = require("node:crypto");
 
 const projectRoot = path.resolve(__dirname, "..");
 const frontendRoot = path.join(projectRoot, "frontend");
+const workspaceRoot = path.resolve(process.env.LEARNPATH_DATA_DIR || path.join(__dirname, "data"));
 
 function loadEnv(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -32,6 +33,11 @@ const maxBodyBytes = 64 * 1024;
 const staticFiles = {
   "/": { file: "index.html", type: "text/html; charset=utf-8" },
   "/index.html": { file: "index.html", type: "text/html; charset=utf-8" },
+  "/roadmap": { file: "index.html", type: "text/html; charset=utf-8" },
+  "/tasks": { file: "index.html", type: "text/html; charset=utf-8" },
+  "/study-plan": { file: "index.html", type: "text/html; charset=utf-8" },
+  "/resources": { file: "index.html", type: "text/html; charset=utf-8" },
+  "/new": { file: "index.html", type: "text/html; charset=utf-8" },
   "/new.html": { file: "new.html", type: "text/html; charset=utf-8" },
   "/script.js": { file: "script.js", type: "text/javascript; charset=utf-8" },
   "/style.css": { file: "style.css", type: "text/css; charset=utf-8" },
@@ -50,37 +56,6 @@ function getWorkspaceId(request, response) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   response.setHeader("Set-Cookie", `learnpath_session=${id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000${secure}`);
   return id;
-}
-
-function requireSupabase() {
-  const url = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    const error = new Error("Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in backend/.env.");
-    error.status = 503;
-    throw error;
-  }
-  return { url, key };
-}
-
-async function supabaseRequest(pathname, options = {}) {
-  const { url, key } = requireSupabase();
-  const response = await fetch(`${url}/rest/v1/${pathname}`, {
-    ...options,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    console.error(`Supabase request failed (${response.status}).`, detail);
-    throw new Error(`Supabase request failed (${response.status}). Check backend logs and Supabase configuration.`);
-  }
-  return response;
 }
 
 function validateWorkspace(value) {
@@ -102,24 +77,32 @@ function validateWorkspace(value) {
 
 async function routeWorkspace(request, response) {
   const id = getWorkspaceId(request, response);
-  const query = `learnpath_workspaces?id=eq.${encodeURIComponent(id)}&select=data`;
+  const filePath = path.join(workspaceRoot, `${id}.json`);
   try {
     if (request.method === "GET") {
-      const result = await supabaseRequest(query);
-      const rows = await result.json();
-      return sendJson(response, 200, { workspace: rows.length ? rows[0].data : null });
+      try {
+        const workspace = JSON.parse(await fs.promises.readFile(filePath, "utf8"));
+        return sendJson(response, 200, { workspace: validateWorkspace(workspace) });
+      } catch (error) {
+        if (error.code === "ENOENT") return sendJson(response, 200, { workspace: null });
+        throw error;
+      }
     }
     if (request.method === "POST") {
       const workspace = validateWorkspace(await readBody(request));
-      await supabaseRequest(`learnpath_workspaces?on_conflict=id`, {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({ id, data: workspace, updated_at: new Date().toISOString() }),
-      });
+      await fs.promises.mkdir(workspaceRoot, { recursive: true });
+      const temporaryPath = `${filePath}.${crypto.randomUUID()}.tmp`;
+      try {
+        await fs.promises.writeFile(temporaryPath, JSON.stringify(workspace), { encoding: "utf8", mode: 0o600 });
+        await fs.promises.rename(temporaryPath, filePath);
+      } catch (error) {
+        await fs.promises.rm(temporaryPath, { force: true }).catch(() => {});
+        throw error;
+      }
       return sendJson(response, 200, { saved: true });
     }
     if (request.method === "DELETE") {
-      await supabaseRequest(query, { method: "DELETE" });
+      await fs.promises.rm(filePath, { force: true });
       return sendJson(response, 200, { deleted: true });
     }
     response.setHeader("Allow", "GET, POST, DELETE");
@@ -363,8 +346,7 @@ async function readBody(request) {
 async function routeApi(request, response, pathname) {
   if (request.method === "GET" && pathname === "/api/health") {
     const geminiConfigured = Boolean(process.env.GEMINI_API_KEY?.trim());
-    const supabaseConfigured = Boolean(process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
-    return sendJson(response, 200, { status: "ok", configured: geminiConfigured, geminiConfigured, supabaseConfigured });
+    return sendJson(response, 200, { status: "ok", configured: geminiConfigured, geminiConfigured, workspaceSyncReady: true });
   }
   if (pathname === "/api/workspace") return routeWorkspace(request, response);
   if (request.method !== "POST" || !["/api/generate", "/api/chat"].includes(pathname)) {

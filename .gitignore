@@ -1,4 +1,11 @@
-.env
-backend/.env
 node_modules/
 dist/
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+.venv/
+.env
+backend/.env
+backend/data/*.json
+backend/data/*.tmp
+.pytest_cache/
