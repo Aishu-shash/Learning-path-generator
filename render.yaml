@@ -13,3 +13,5 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
+      - key: CORS_ORIGINS
+        value: https://learning-path-generator-frontend.vercel.app

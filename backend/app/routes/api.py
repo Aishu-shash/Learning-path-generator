@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, make_response, request
+from flask import Blueprint, current_app, jsonify, make_response, request
 from ..services.workspace import delete_workspace, get_workspace, save_workspace
 from ..ai.gemini import generate_roadmap, answer_question, GeminiError
 
@@ -42,7 +42,9 @@ def generate():
     try:
         return jsonify(roadmap=generate_roadmap(body.get("learner")))
     except (ValueError, GeminiError) as error:
-        return jsonify(error=str(error)), getattr(error, "status", 400 if isinstance(error, ValueError) else 502)
+        status = getattr(error, "status", 400 if isinstance(error, ValueError) else 502)
+        current_app.logger.warning("Roadmap generation failed with HTTP %s: %s", status, error)
+        return jsonify(error=str(error)), status
 
 
 @api.post("/chat")

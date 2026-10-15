@@ -1,9 +1,12 @@
 import json
+import logging
 import os
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiError(Exception):
@@ -33,9 +36,11 @@ def _call(contents, system):
         with urllib.request.urlopen(req, timeout=90) as response:
             result = json.loads(response.read())
     except urllib.error.HTTPError as error:
+        logger.error("Gemini returned HTTP %s during an API request.", error.code)
         messages = {400: "Gemini rejected this request. Check the configured model.", 401: "Gemini rejected the API key. Check GEMINI_API_KEY.", 403: "Gemini denied this API key. Check its permissions.", 429: "Gemini quota or rate limit reached."}
         raise GeminiError(messages.get(error.code, f"Gemini request failed (HTTP {error.code})."), error.code if error.code in (400, 401, 403, 429) else 502) from error
     except (urllib.error.URLError, TimeoutError) as error:
+        logger.error("Could not connect to Gemini: %s", getattr(error, "reason", "request timed out"))
         raise GeminiError("Could not connect to Gemini. Check the server's internet connection and try again.") from error
     try:
         text = "".join(part.get("text", "") for part in result["candidates"][0]["content"]["parts"])
