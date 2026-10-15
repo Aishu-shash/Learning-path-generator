@@ -60,3 +60,12 @@ The backend stores workspaces as private JSON files in `backend/data/`. Supabase
 `GET /api/health` reports whether Gemini is configured. If generation fails, check the Flask terminal and `GEMINI_API_KEY` in `backend/.env`. Exporting or printing a roadmap can be done through the browser print dialog.
 
 AI generated study advice can be inaccurate. Check important or exam-specific information against authoritative sources.
+
+## Deploy on Render
+
+1. Push this repository to GitHub and sign in to [Render](https://render.com).
+2. In the Render Dashboard, choose **New > Blueprint**, connect this repository, and apply the `render.yaml` Blueprint.
+3. Enter `GEMINI_API_KEY` in Render's secure environment-variable prompt. Do not commit `.env` files or paste keys into chat.
+4. Wait for the service health check to pass, then open the service URL shown in Render.
+
+The Blueprint builds the Vite frontend and serves it with Flask from one web service. The free web-service plan may sleep when idle, and its local workspace files are ephemeral; use a persistent database for durable server-side workspace storage.

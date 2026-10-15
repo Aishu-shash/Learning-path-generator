@@ -1,0 +1,8 @@
+.git
+.venv
+backend/.env
+backend/.venv
+backend/data
+dist
+node_modules
+.env
