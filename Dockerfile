@@ -13,4 +13,4 @@ COPY backend ./backend
 COPY --from=frontend /app/dist ./dist
 ENV PYTHONPATH=/app/backend \
     PYTHONUNBUFFERED=1
-CMD ["sh", "-c", "gunicorn --chdir /app/backend run:app --bind 0.0.0.0:${PORT:-10000}"]
+CMD ["sh", "-c", "gunicorn --chdir /app/backend run:app --bind 0.0.0.0:${PORT:-10000} --timeout 120"]
