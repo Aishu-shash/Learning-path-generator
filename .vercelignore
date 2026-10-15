@@ -1,0 +1,8 @@
+.env
+.env.*
+backend/.env
+backend/.env.*
+backend/.venv
+backend/data
+dist
+node_modules

@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
@@ -9,7 +10,15 @@ def create_app():
     frontend_dist = Path(__file__).resolve().parents[2] / "dist"
     app = Flask(__name__, static_folder=str(frontend_dist), static_url_path="")
     app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
-    CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5173", "http://localhost:5173"])
+    cors_origins = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://127.0.0.1:5173,http://localhost:5173",
+        ).split(",")
+        if origin.strip()
+    ]
+    CORS(app, supports_credentials=True, origins=cors_origins)
     app.register_blueprint(api, url_prefix="/api")
 
     @app.get("/")

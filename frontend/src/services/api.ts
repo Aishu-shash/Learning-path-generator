@@ -1,7 +1,9 @@
 import type { Learner, Roadmap } from '../types'
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://learnova-ai-dfti.onrender.com')
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } })
+  const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } })
   const result = await response.json()
   if (!response.ok) throw new Error(result.error || 'The request could not be completed.')
   return result as T
