@@ -1,4 +1,4 @@
-# Learnpath
+﻿# Learnpath
 
 Learnpath has a separate vanilla-JavaScript frontend and Node.js backend. The backend keeps the Gemini and optional Supabase credentials private, serves the frontend, and generates learning paths with Gemini. Workspace data is saved in this browser by default and can optionally sync to Supabase without requiring a login.
 
@@ -6,17 +6,16 @@ Learnpath has a separate vanilla-JavaScript frontend and Node.js backend. The ba
 
 ```text
 AI learning/
-├── frontend/
-│   ├── index.html
-│   ├── script.js
-│   └── style.css
-├── backend/
-│   ├── index.js
-│   ├── schema.sql
-│   ├── .env                 # private API keys; excluded from Git
-│   └── .env.example
-├── package.json
-└── README.md
+- frontend/
+- backend/
+  - index.js
+  - .env                 # private API keys; excluded from Git
+  - .env.example
+- supabase/
+  - config.toml
+  - migrations/
+- package.json
+- README.md
 ```
 
 ## Setup on Windows
@@ -40,7 +39,7 @@ AI learning/
 
 ## Optional Supabase sync
 
-1. Create a Supabase project. In its **SQL Editor**, run the contents of [`backend/schema.sql`](./backend/schema.sql).
+1. Link this repository to your Supabase project. Leave **Working directory** blank because `supabase/` is at the repository root. The migration in `supabase/migrations/` creates the workspace table.
 2. In project settings, copy the **Project URL** and the legacy `service_role` API key. The service-role key bypasses row-level security; keep it only in `backend/.env`, never in frontend files or chat.
 3. Add these values to `backend/.env` and restart the server:
 
@@ -63,7 +62,7 @@ AI learning/
 - Gemini is required for generating paths. Fill in `GEMINI_API_KEY` in `backend/.env` and restart `npm run dev`.
 - Supabase is optional. Without it, the app stores workspace data in this browser only.
 - `/api/health` reports whether each service is configured without revealing keys.
-- If workspace saving fails, check the backend terminal for the Supabase error and confirm the SQL schema, project URL, and service-role key.
+- If workspace saving fails, check the backend terminal for the Supabase error and confirm the migration was applied, the project URL, and the service-role key.
 - **Export PDF** opens the browser print dialog; choose **Save as PDF**.
 
 Generated study advice can be inaccurate. Check important or exam-specific information against authoritative sources.
