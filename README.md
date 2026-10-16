@@ -55,7 +55,7 @@ learnova-ai/
 
 6. Open **http://127.0.0.1:5173**. Vite forwards `/api` requests to Flask on port 5000.
 
-The backend stores workspaces as private JSON files in `backend/data/`. Supabase client configuration is optional; database schema and row-level security are in `supabase/migrations/` for deployments that use Supabase. Never put a service-role key in a `VITE_` variable. The previous vanilla JavaScript and Node files are retained under `legacy/`.
+The backend stores workspaces as private JSON files in `backend/data/`. Supabase client configuration is optional; database schema and row-level security are in `supabase/migrations/` for deployments that use Supabase. With no Supabase URL/key configured, sign-up, sign-in, and profile editing use a local development account stored in that browser (passwords are PBKDF2-hashed); this is for local development only and is not hosted authentication. To enable hosted accounts, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the frontend environment and enable email/password authentication in Supabase. Configure the Supabase email-confirmation and redirect settings for your deployment as needed. Never put a service-role key in a `VITE_` variable. The previous vanilla JavaScript and Node files are retained under `legacy/`.
 
 `GET /api/health` reports whether Gemini is configured. If generation fails, check the Flask terminal and `GEMINI_API_KEY` in `backend/.env`. Exporting or printing a roadmap can be done through the browser print dialog.
 
